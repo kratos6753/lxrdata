@@ -1,0 +1,85 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: lxrdata
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: wurstmeister/kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    depends_on:
+      - zookeeper
+
+  django_app:
+    build: .
+    stdin_open: true
+    tty: true
+    command: bash # python manage.py migrate && python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - KAFKA_BROKER_URL=kafka:9092
+      - POSTGRES_DB=lxrdata
+      - POSTGRES_HOST=db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_PORT=5432
+    depends_on:
+      - db
+      - kafka
+
+  fetcher_worker:
+    build: .
+    stdin_open: true
+    tty: true
+    command: bash # celery -A backend worker --loglevel=info --queues=fetcher_queue
+    volumes:
+      - .:/app
+    environment:
+      - KAFKA_BROKER_URL=kafka:9092
+      - POSTGRES_DB=lxrdata
+      - POSTGRES_HOST=db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_PORT=5432
+    depends_on:
+      - db
+      - kafka
+
+  processor_worker:
+    build: .
+    command: bash # celery -A backend worker --loglevel=info --queues=processor_queue
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/app
+    environment:
+      - KAFKA_BROKER_URL=kafka:9092
+      - POSTGRES_DB=lxrdata
+      - POSTGRES_HOST=db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_PORT=5432
+    depends_on:
+      - db
+      - kafka
+
+volumes:
+  postgres_data:

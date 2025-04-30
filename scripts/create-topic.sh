@@ -1,0 +1,1 @@
+kafka-topics --bootstrap-server kafka:9092 --create --topic $1 --partitions 2 --replication-factor 2

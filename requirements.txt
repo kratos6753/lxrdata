@@ -1,0 +1,17 @@
+celery
+celery[redis]
+confluent-kafka
+psycopg2-binary
+requests
+Django
+djangorestframework
+markdown
+django-filter
+aiohttp
+gunicorn
+django-celery-beat
+redis
+aiobreaker
+tenacity
+pyarrow
+pandas
